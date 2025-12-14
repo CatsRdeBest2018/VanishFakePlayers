@@ -3,6 +3,7 @@ package me.drex.vanish.mixin;
 import io.netty.channel.ChannelFutureListener;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import me.drex.vanish.api.VanishAPI;
+import me.drex.vanish.mixin.ClientboundPlayerInfoUpdatePacketAccessor;
 import me.drex.vanish.util.Arguments;
 import net.minecraft.network.PacketSendListener;
 import net.minecraft.network.protocol.Packet;
@@ -52,18 +53,40 @@ public abstract class ServerCommonPacketListenerImplMixin {
                 // If the packet context is set, this packet was already modified
                 if (Arguments.PACKET_CONTEXT.get() != null) return;
 
-                ObjectArrayList<ServerPlayer> modifiedEntries = new ObjectArrayList<>();
+                boolean hasNonPlayerEntries = false;
+                ObjectArrayList<ClientboundPlayerInfoUpdatePacket.Entry> filteredEntries = new ObjectArrayList<>(playerInfoPacket.entries().size());
+                ObjectArrayList<ServerPlayer> rebuiltPlayers = new ObjectArrayList<>();
                 for (ClientboundPlayerInfoUpdatePacket.Entry playerUpdate : playerInfoPacket.entries()) {
                     ServerPlayer player = server.getPlayerList().getPlayer(playerUpdate.profileId());
+                    if (player == null) {
+                        // Custom tab entries (e.g. fake players) don't have a backing ServerPlayer
+                        hasNonPlayerEntries = true;
+                        filteredEntries.add(playerUpdate);
+                        continue;
+                    }
                     if (VanishAPI.canSeePlayer(player, listener.player)) {
-                        if (player != null) modifiedEntries.add(player);
+                        filteredEntries.add(playerUpdate);
+                        rebuiltPlayers.add(player);
                     }
                 }
-                if (!modifiedEntries.isEmpty()) {
+                if (hasNonPlayerEntries) {
+                    // Keep custom tab entries intact; rebuild packet with visible real players
                     var prev = Arguments.PACKET_CONTEXT.get();
                     try {
                         Arguments.PACKET_CONTEXT.set(listener.player);
-                        this.send(new ClientboundPlayerInfoUpdatePacket(playerInfoPacket.actions(), modifiedEntries));
+                        ((ClientboundPlayerInfoUpdatePacketAccessor) playerInfoPacket).vanish$setEntries(filteredEntries);
+                        this.send(playerInfoPacket);
+                    } finally {
+                        Arguments.PACKET_CONTEXT.set(prev);
+                    }
+                    ci.cancel();
+                    return;
+                }
+                if (!rebuiltPlayers.isEmpty()) {
+                    var prev = Arguments.PACKET_CONTEXT.get();
+                    try {
+                        Arguments.PACKET_CONTEXT.set(listener.player);
+                        this.send(new ClientboundPlayerInfoUpdatePacket(playerInfoPacket.actions(), rebuiltPlayers));
                     } finally {
                         Arguments.PACKET_CONTEXT.set(prev);
                     }

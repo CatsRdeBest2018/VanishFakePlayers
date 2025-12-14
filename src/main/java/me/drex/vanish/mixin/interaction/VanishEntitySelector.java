@@ -11,8 +11,8 @@ import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 //? if >= 1.21.2 {
-import net.minecraft.world.entity.vehicle.minecart.NewMinecartBehavior;
-import net.minecraft.world.entity.vehicle.minecart.OldMinecartBehavior;
+import net.minecraft.world.entity.vehicle.NewMinecartBehavior;
+import net.minecraft.world.entity.vehicle.OldMinecartBehavior;
 //? } else {
 //import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 //? }
@@ -128,10 +128,10 @@ public class VanishEntitySelector {
 
         @Redirect(
             //? if > 1.21.10 {
-            method = "doSweepAttack",
+            /*method = "doSweepAttack",
 
-            //? } else {
-//            method = "attack",
+            *///? } else {
+            method = "attack",
             //? }
             at = @At(
                 value = "INVOKE",

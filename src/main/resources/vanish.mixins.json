@@ -12,6 +12,7 @@
     "AllayAiMixin",
     "ArmadilloMixin",
     "ClientboundPlayerInfoUpdatePacket$EntryMixin",
+    "ClientboundPlayerInfoUpdatePacketAccessor",
     "CommandSourceStackMixin",
     "ContainerMixin",
     "ContainerOpenersCountMixin",
